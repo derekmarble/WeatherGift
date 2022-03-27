@@ -20,11 +20,12 @@ class LocationListViewController: UIViewController {
         super.viewDidLoad()
         
 
-        
+    
         tableView.dataSource = self
         tableView.delegate = self
         
     }
+    
     
     func saveLocations() {
         let encoder = JSONEncoder()
