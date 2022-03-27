@@ -14,6 +14,12 @@ private let dateFormatter: DateFormatter = {
     return dateFormatter
 }()
 
+private let hourFormatter: DateFormatter = {
+    let hourFormatter = DateFormatter()
+    hourFormatter.dateFormat = "ha"
+    return hourFormatter
+}()
+
 struct DailyWeather {
     var dailyIcon: String
     var dailyWeekday: String
@@ -22,12 +28,19 @@ struct DailyWeather {
     var dailyLow: Int
 }
 
+struct HourlyWeather {
+    var hour: String
+    var hourlyTemperature: Int
+    var hourlyIcon: String
+}
+
 class WeatherDetail: WeatherLocation {
     
     private struct Result: Codable {
         var timezone: String
         var current: Current
         var daily: [Daily]
+        var hourly: [Hourly]
         
     }
     private struct Current: Codable {
@@ -36,6 +49,7 @@ class WeatherDetail: WeatherLocation {
         var weather: [Weather]
     }
     private struct Weather: Codable {
+        //for accessing the first element of the weather array from OpenWeather API
         var description: String
         var icon: String
     }
@@ -49,6 +63,11 @@ class WeatherDetail: WeatherLocation {
         var max: Double
         var min: Double
     }
+    private struct Hourly: Codable {
+        var dt: TimeInterval
+        var temp: Double
+        var weather: [Weather]
+    }
     
     var timezone = ""
     var currentTime = 0.0
@@ -56,6 +75,7 @@ class WeatherDetail: WeatherLocation {
     var summary = ""
     var dayIcon = ""
     var dailyWeatherData: [DailyWeather] = []
+    var hourlyWeatherData: [HourlyWeather] = []
     
     func getData(completed: @ escaping() -> ()) {
         let urlString = "https://api.openweathermap.org/data/2.5/onecall?lat=\(latitude)&lon=\(longitude)&exclude=minutely&units=imperial&appid=\(APIkeys.openWeatherKey)"
@@ -101,6 +121,21 @@ class WeatherDetail: WeatherLocation {
                     self.dailyWeatherData.append(dailyWeather)
                     print("Day: \(dailyWeekday), High: \(dailyHigh), Low: \(dailyLow)")
                 }
+                //get no more than 24 hrs of hourly data
+                let lastHour = min(24, result.hourly.count)
+                if lastHour > 0 {
+                    for index in 1...lastHour {
+                        let hourlyDate = Date(timeIntervalSince1970: result.hourly[index].dt)
+                        hourFormatter.timeZone = TimeZone(identifier: result.timezone)
+                        let hour = hourFormatter.string(from: hourlyDate)
+                        let hourlyIcon = self.fileNameForIcon(icon: result.hourly[index].weather[0].icon)
+                        let hourlyTemperature = Int(result.hourly[index].temp.rounded())
+                        let hourlyWeather = HourlyWeather(hour: hour, hourlyTemperature: hourlyTemperature, hourlyIcon: hourlyIcon)
+                        self.hourlyWeatherData.append(hourlyWeather)
+                        print("Hour: \(hour), Temperature: \(hourlyTemperature), Icon: \(hourlyIcon)")
+                    }
+                }
+                
             } catch {
                 print("JSON ERROR: \(error.localizedDescription)")
                 
